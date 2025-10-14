@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'mev-burn-indexer'
+
+scrape_configs:
+  - job_name: 'mev-burn-indexer'
+    static_configs:
+      - targets: ['host.docker.internal:9090']
+        labels:
+          service: 'mev-burn-indexer'
+          environment: 'production'
+    
+    # For Linux hosts, use this instead:
+    # - targets: ['172.17.0.1:9090']
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

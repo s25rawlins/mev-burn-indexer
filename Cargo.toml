@@ -1,0 +1,64 @@
+[package]
+name = "mev-burn-indexer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Async runtime - industry standard for async Rust
+tokio = { version = "1.35", features = ["full"] }
+
+# gRPC client framework - production-ready, widely adopted
+tonic = { version = "0.10", features = ["tls"] }
+prost = "0.12"  # Protocol buffers for gRPC message serialization
+
+# Solana SDK - official client library for parsing transactions
+solana-client = "1.18"
+solana-sdk = "1.18"
+solana-transaction-status = "1.18"
+
+# Async utilities
+futures = "0.3"
+
+# Database access - PostgreSQL async client
+tokio-postgres = { version = "0.7", features = ["with-chrono-0_4"] }
+postgres-types = { version = "0.2", features = ["derive", "with-chrono-0_4"] }
+
+# TLS support for database connections (required for Neon and other cloud providers)
+tokio-postgres-rustls = "0.10"
+rustls = "0.21"
+webpki-roots = "0.25"
+
+# Error handling - ergonomic custom error types
+thiserror = "1.0"
+anyhow = "1.0"  # Context-rich error propagation for application-level errors
+
+# Serialization/Deserialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Date/Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging and observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Prometheus metrics
+prometheus = "0.13"
+lazy_static = "1.4"
+
+# Configuration management - environment variable loading
+dotenvy = "0.15"
+
+# HTTP client for REST fallback if needed
+reqwest = { version = "0.11", features = ["json"] }
+
+# Base58 encoding for Solana addresses
+bs58 = "0.5"
+
+# Base64 decoding for transaction data
+base64 = "0.21"
+
+[dev-dependencies]
+# Testing utilities
+tokio-test = "0.4"
