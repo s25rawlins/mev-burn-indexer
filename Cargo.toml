@@ -11,6 +11,10 @@ tokio = { version = "1.35", features = ["full"] }
 tonic = { version = "0.10", features = ["tls"] }
 prost = "0.12"  # Protocol buffers for gRPC message serialization
 
+# Yellowstone gRPC - Triton One's streaming service
+yellowstone-grpc-proto = "1.13"
+yellowstone-grpc-client = "1.13"
+
 # Solana SDK - official client library for parsing transactions
 solana-client = "1.18"
 solana-sdk = "1.18"

@@ -45,8 +45,12 @@ async fn main() -> Result<(), AppError> {
     // Create repository for database operations
     let repository = Arc::new(TransactionRepository::new(db_client));
 
-    // Create RPC client for WebSocket subscription
-    let rpc_client = RpcClient::new(config.grpc_endpoint.clone(), &config.target_account)?;
+    // Create RPC client for Yellowstone gRPC subscription
+    let rpc_client = RpcClient::new(
+        config.grpc_endpoint.clone(),
+        config.grpc_token.clone(),
+        &config.target_account
+    )?;
 
     info!("All systems initialized, starting stream processing");
 
@@ -68,17 +72,9 @@ async fn main() -> Result<(), AppError> {
     });
 
     // Start processing the account stream (runs indefinitely with auto-reconnection)
-    // Use the configured HTTP RPC URL and authentication token
-    let auth_token = if config.rpc_http_url.contains("rpcpool.com") {
-        Some(config.grpc_token.as_str())
-    } else {
-        None
-    };
-    
     process_account_stream(
         rpc_client,
         &config.rpc_http_url,
-        auth_token,
         repository
     ).await?;
 

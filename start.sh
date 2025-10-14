@@ -80,16 +80,14 @@ validate_prerequisites() {
     else
         log_success ".env file found"
         
-        # Validate required environment variables
-        source .env 2>/dev/null || true
-        
+        # Validate required environment variables by checking if they exist in the .env file
         local required_vars=("GRPC_ENDPOINT" "TARGET_ACCOUNT" "DATABASE_URL")
         for var in "${required_vars[@]}"; do
-            if [[ -z "${!var:-}" ]]; then
+            if grep -q "^${var}=" .env 2>/dev/null; then
+                log_success "Environment variable $var is set"
+            else
                 log_error "Required environment variable $var is not set in .env"
                 has_errors=1
-            else
-                log_success "Environment variable $var is set"
             fi
         done
     fi
@@ -150,9 +148,14 @@ run_application() {
     # Set default log level if not specified
     export LOG_LEVEL="${LOG_LEVEL:-info}"
     
-    log_info "Target Account: $TARGET_ACCOUNT"
-    log_info "gRPC Endpoint: $GRPC_ENDPOINT"
-    log_info "Database: ${DATABASE_URL%%\?*}" # Show DB URL without query params
+    log_info "Target Account: ${TARGET_ACCOUNT:-<not set>}"
+    log_info "gRPC Endpoint: ${GRPC_ENDPOINT:-<not set>}"
+    # Show DB URL without query params, using a safer approach
+    if [[ -n "${DATABASE_URL:-}" ]]; then
+        log_info "Database: ${DATABASE_URL%%\?*}"
+    else
+        log_info "Database: <not set>"
+    fi
     log_info "Log Level: $LOG_LEVEL"
     echo
     

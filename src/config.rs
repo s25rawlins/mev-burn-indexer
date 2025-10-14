@@ -49,8 +49,8 @@ impl AppConfig {
         // Validate target account is a valid base58 string
         Self::validate_base58_address(&target_account)?;
 
-        // Validate WebSocket URL has correct protocol scheme
-        Self::validate_websocket_url(&grpc_endpoint)?;
+        // Validate gRPC endpoint URL has correct protocol scheme
+        Self::validate_grpc_url(&grpc_endpoint)?;
 
         Ok(Self {
             grpc_endpoint,
@@ -70,16 +70,16 @@ impl AppConfig {
         Ok(())
     }
 
-    /// Validate that the endpoint URL uses the WebSocket protocol.
+    /// Validate that the endpoint URL uses the HTTPS protocol for gRPC.
     /// 
-    /// WebSocket connections require ws:// or wss:// protocol schemes.
+    /// gRPC connections require http:// or https:// protocol schemes.
     /// This validation catches configuration errors early rather than
     /// failing during connection attempts.
-    fn validate_websocket_url(url: &str) -> Result<(), AppError> {
-        if !url.starts_with("ws://") && !url.starts_with("wss://") {
+    fn validate_grpc_url(url: &str) -> Result<(), AppError> {
+        if !url.starts_with("http://") && !url.starts_with("https://") {
             return Err(AppError::Config(
                 format!(
-                    "GRPC_ENDPOINT must be a WebSocket URL (ws:// or wss://), got: {}",
+                    "GRPC_ENDPOINT must be an HTTP/HTTPS URL (http:// or https://), got: {}",
                     url
                 )
             ));
