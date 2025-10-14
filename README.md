@@ -243,6 +243,30 @@ Adjust the log level via the `LOG_LEVEL` environment variable:
 
 ## Troubleshooting
 
+**Metrics Server Port Already in Use**
+
+If you see the error `Failed to bind metrics server: Address already in use (os error 98)`:
+
+1. **Find the conflicting process**:
+   ```bash
+   # On Linux
+   lsof -i :9090
+   # Or
+   ss -tulpn | grep 9090
+   
+   # On macOS
+   lsof -i :9090
+   ```
+
+2. **Option A: Stop the conflicting process** (if it's safe to do so)
+
+3. **Option B: Use a different port** by adding to your `.env` file:
+   ```env
+   METRICS_PORT=9091
+   ```
+
+4. If using Docker monitoring stack, update `docker-compose.monitoring.yml` to match your custom port
+
 **Connection Issues**
 
 If you see repeated gRPC connection errors:
@@ -293,11 +317,3 @@ The architecture supports several planned extensions:
 3. **Metrics Export**: Expose Prometheus metrics for monitoring dashboards
 4. **REST API**: Provide HTTP endpoints for querying historical data
 5. **Multi-Account Tracking**: Extend to monitor multiple accounts simultaneously
-
-## License
-
-[Specify your license here]
-
-## Contributing
-
-[Add contribution guidelines if applicable]

@@ -13,6 +13,7 @@ pub struct AppConfig {
     pub target_account: String,
     pub database_url: String,
     pub log_level: String,
+    pub metrics_port: u16,
 }
 
 impl AppConfig {
@@ -27,6 +28,7 @@ impl AppConfig {
     /// Optional environment variables:
     /// - RPC_HTTP_URL: HTTP RPC endpoint (defaults to public Solana mainnet)
     /// - LOG_LEVEL: Logging level (default: "info")
+    /// - METRICS_PORT: Port for Prometheus metrics server (default: 9090)
     pub fn from_env() -> Result<Self, AppError> {
         let grpc_endpoint = env::var("GRPC_ENDPOINT")
             .map_err(|_| AppError::Config("GRPC_ENDPOINT not set".to_string()))?;
@@ -46,6 +48,12 @@ impl AppConfig {
 
         let log_level = env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
 
+        // Parse metrics port with validation
+        let metrics_port = env::var("METRICS_PORT")
+            .ok()
+            .and_then(|port_str| port_str.parse::<u16>().ok())
+            .unwrap_or(9090);
+
         // Validate target account is a valid base58 string
         Self::validate_base58_address(&target_account)?;
 
@@ -59,6 +67,7 @@ impl AppConfig {
             target_account,
             database_url,
             log_level,
+            metrics_port,
         })
     }
 

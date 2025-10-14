@@ -55,7 +55,7 @@ async fn main() -> Result<(), AppError> {
     info!("All systems initialized, starting stream processing");
 
     // Start metrics server in background
-    let metrics_port = 9090;
+    let metrics_port = config.metrics_port;
     tokio::spawn(async move {
         if let Err(e) = metrics_server::start_metrics_server(metrics_port).await {
             tracing::error!("Metrics server error: {}", e);

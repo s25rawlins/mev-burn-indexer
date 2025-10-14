@@ -9,7 +9,13 @@ use tracing::{error, info};
 pub async fn start_metrics_server(port: u16) -> Result<(), AppError> {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = TcpListener::bind(addr).await
-        .map_err(|e| AppError::Config(format!("Failed to bind metrics server: {}", e)))?;
+        .map_err(|e| AppError::Config(format!(
+            "Failed to bind metrics server to port {}: {}. \
+             Port may already be in use. Try: \
+             1) Stop any process using port {} (find with: lsof -i :{} or ss -tulpn | grep {}), \
+             2) Set a different port using METRICS_PORT environment variable",
+            port, e, port, port, port
+        )))?;
     
     info!("Metrics server listening on {}", addr);
 
