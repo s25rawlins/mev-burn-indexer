@@ -77,19 +77,35 @@ validate_prerequisites() {
         log_error ".env file not found. Please create one with required configuration."
         log_info "Required variables: GRPC_ENDPOINT, GRPC_TOKEN, TARGET_ACCOUNT, DATABASE_URL"
         has_errors=1
+    elif [[ ! -r .env ]]; then
+        # Verify file is readable to prevent source failures
+        log_error ".env file exists but is not readable. Check file permissions."
+        has_errors=1
     else
         log_success ".env file found"
         
-        # Validate required environment variables by checking if they exist in the .env file
-        local required_vars=("GRPC_ENDPOINT" "TARGET_ACCOUNT" "DATABASE_URL")
-        for var in "${required_vars[@]}"; do
-            if grep -q "^${var}=" .env 2>/dev/null; then
-                log_success "Environment variable $var is set"
-            else
-                log_error "Required environment variable $var is not set in .env"
-                has_errors=1
-            fi
-        done
+        # Validate .env syntax before attempting to source it
+        if ! bash -n .env 2>/dev/null; then
+            log_error ".env file contains syntax errors. Please fix and try again."
+            has_errors=1
+        else
+            # Validate required environment variables exist and have non-empty values
+            # We load the .env temporarily to check values without polluting current environment
+            local required_vars=("GRPC_ENDPOINT" "TARGET_ACCOUNT" "DATABASE_URL")
+            for var in "${required_vars[@]}"; do
+                # Check if variable line exists in .env
+                if ! grep -q "^${var}=" .env 2>/dev/null; then
+                    log_error "Required environment variable $var is not defined in .env"
+                    has_errors=1
+                elif ! grep "^${var}=" .env | grep -q "=."; then
+                    # Verify the value after = is not empty
+                    log_error "Environment variable $var is defined but has no value"
+                    has_errors=1
+                else
+                    log_success "Environment variable $var is set"
+                fi
+            done
+        fi
     fi
     
     # Check for src directory
@@ -124,38 +140,104 @@ build_application() {
     log_info "Running cargo build --release..."
     log_info "This may take a few minutes on first build..."
     
-    if cargo build --release 2>&1; then
-        log_success "Build completed successfully"
-        return 0
+    # Capture build output and exit status
+    local build_output
+    local build_status
+    
+    if build_output=$(cargo build --release 2>&1); then
+        build_status=0
     else
-        log_error "Build failed"
+        build_status=$?
+    fi
+    
+    # Display any build output for transparency
+    if [[ -n "$build_output" ]]; then
+        echo "$build_output"
+    fi
+    
+    if [[ $build_status -ne 0 ]]; then
+        log_error "Build failed with exit code $build_status"
         return 1
     fi
+    
+    # Verify the binary was actually created
+    # This catches edge cases where cargo succeeds but doesn't produce the expected artifact
+    if [[ ! -f target/release/mev-burn-indexer ]]; then
+        log_error "Build reported success but binary not found at target/release/mev-burn-indexer"
+        log_error "This may indicate a workspace configuration issue"
+        return 1
+    fi
+    
+    # Verify the binary is executable
+    if [[ ! -x target/release/mev-burn-indexer ]]; then
+        log_error "Binary exists but is not executable. Check file permissions."
+        return 1
+    fi
+    
+    log_success "Build completed successfully"
+    return 0
 }
 
 # Run the application
 run_application() {
     log_header "Starting Application"
     
-    # Load environment variables
+    # Final verification that binary exists before attempting to run
+    # This guards against scenarios where build artifacts were cleaned between build and run
+    if [[ ! -f target/release/mev-burn-indexer ]]; then
+        log_error "Application binary not found at target/release/mev-burn-indexer"
+        log_error "Build artifacts may have been cleaned. Try running the script again."
+        return 1
+    fi
+    
+    if [[ ! -x target/release/mev-burn-indexer ]]; then
+        log_error "Application binary is not executable"
+        return 1
+    fi
+    
+    # Load environment variables with error handling
     if [[ -f .env ]]; then
-        # Export all variables from .env
-        set -a
-        source .env
-        set +a
+        # Wrap sourcing in a subshell test first to catch any runtime errors
+        # This prevents the main script from crashing if .env has issues
+        if (set -a; source .env; set +a) 2>/dev/null; then
+            # Safe to source in main shell
+            set -a
+            source .env
+            set +a
+        else
+            log_error "Failed to load .env file. It may contain invalid shell syntax."
+            return 1
+        fi
+    else
+        log_warning ".env file not found at runtime. Using environment defaults."
     fi
     
     # Set default log level if not specified
     export LOG_LEVEL="${LOG_LEVEL:-info}"
     
-    log_info "Target Account: ${TARGET_ACCOUNT:-<not set>}"
-    log_info "gRPC Endpoint: ${GRPC_ENDPOINT:-<not set>}"
-    # Show DB URL without query params, using a safer approach
-    if [[ -n "${DATABASE_URL:-}" ]]; then
-        log_info "Database: ${DATABASE_URL%%\?*}"
-    else
-        log_info "Database: <not set>"
+    # Validate critical environment variables are now set after sourcing
+    # These are required for the application to function
+    if [[ -z "${TARGET_ACCOUNT:-}" ]]; then
+        log_error "TARGET_ACCOUNT is not set. Cannot start application."
+        return 1
     fi
+    
+    if [[ -z "${GRPC_ENDPOINT:-}" ]]; then
+        log_error "GRPC_ENDPOINT is not set. Cannot start application."
+        return 1
+    fi
+    
+    if [[ -z "${DATABASE_URL:-}" ]]; then
+        log_error "DATABASE_URL is not set. Cannot start application."
+        return 1
+    fi
+    
+    log_info "Target Account: ${TARGET_ACCOUNT}"
+    log_info "gRPC Endpoint: ${GRPC_ENDPOINT}"
+    # Show DB URL without query params (credentials)
+    # Using parameter expansion to safely extract just the connection string base
+    local db_display="${DATABASE_URL%%\?*}"
+    log_info "Database: ${db_display}"
     log_info "Log Level: $LOG_LEVEL"
     echo
     
