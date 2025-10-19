@@ -426,37 +426,37 @@ If any step fails:
 
 ## Architectural Decisions and Rationale
 
-### Decision: Separate gRPC Stream and JSON-RPC Fetch
+### Separate gRPC Stream and JSON-RPC Fetch
 
 **Rationale**: Yellowstone's gRPC stream is optimized for low-latency notifications but sends minimal data to reduce bandwidth. Full transaction details, including instruction data and logs, are only available via JSON-RPC. By combining both, we get the best of both worlds: real-time notifications with complete data.
 
 **Tradeoff**: This requires two network calls per transaction, increasing latency by the round-trip time of the RPC call (typically 50-100ms). For a low-volume bot (tens or hundreds of transactions per day), this is acceptable. For higher volumes, we could batch RPC calls or investigate whether Yellowstone supports richer transaction data in the stream.
 
-### Decision: Idempotent Database Inserts with ON CONFLICT
+### Idempotent Database Inserts with ON CONFLICT
 
 **Rationale**: During stream reconnection or if Yellowstone replays recent transactions, the application might receive duplicate notifications. Without idempotency, this would create duplicate database records, corrupting analytics. The `ON CONFLICT (signature) DO NOTHING` clause ensures duplicate inserts are silently ignored, making the operation idempotent.
 
 **Tradeoff**: This assumes signatures are unique, which is true in practice (signatures are cryptographic hashes of transaction content). However, if Solana ever reuses signatures (impossible given SHA-256's collision resistance), we'd need to add slot to the unique constraint.
 
-### Decision: Exponential Backoff for Reconnection
+### Exponential Backoff for Reconnection
 
 **Rationale**: When the stream disconnects, immediately reconnecting can overwhelm the server if there's a systemic issue (server restart, rate limiting, network partition). Exponential backoff spreads reconnection attempts over time, reducing load on the server and giving transient issues time to resolve.
 
 **Implementation**: The backoff formula is `min(2^attempt * 1s, 300s)`, so delays are 1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s, 300s, 300s, etc. The 5-minute cap prevents excessive wait times while still providing meaningful spacing between attempts.
 
-### Decision: Asynchronous Architecture with Tokio
+### Asynchronous Architecture with Tokio
 
 **Rationale**: The application spends most of its time waiting: waiting for gRPC messages, waiting for RPC responses, waiting for database writes. Synchronous I/O would block threads during these waits, requiring a thread-per-request model that doesn't scale. Async I/O allows a single thread to handle many concurrent operations by yielding control during waits, maximizing CPU utilization.
 
 **Tradeoff**: Async Rust has a steeper learning curve than synchronous code, particularly around lifetimes and `Send`/`Sync` bounds. However, for a network-heavy application like this, the performance benefits far outweigh the complexity.
 
-### Decision: Separate Tables for Transactions and Balance Changes
+### Separate Tables for Transactions and Balance Changes
 
 **Rationale**: A transaction can affect multiple account balances (the bot's SOL account, token accounts, counterparty accounts, etc.). Storing balance changes in a separate table with a foreign key relationship follows database normalization principles, avoiding data duplication and simplifying queries like "show me all balance changes for account X across all transactions."
 
 **Tradeoff**: Queries that need both transaction and balance data require a join, which is slightly slower than querying a single table. However, PostgreSQL's query planner handles these joins efficiently with proper indexes, and the benefits of normalization outweigh this minor performance cost.
 
-### Decision: Repository Pattern for Database Access
+### Repository Pattern for Database Access
 
 **Rationale**: Encapsulating database logic behind a repository interface provides several benefits:
 
@@ -466,7 +466,7 @@ If any step fails:
 
 The repository exposes methods like `insert_complete_transaction()` that hide the complexity of multiple SQL queries behind a single, intention-revealing function call.
 
-### Decision: Custom Error Types with thiserror
+### Custom Error Types with thiserror
 
 **Rationale**: Rust's `Result<T, E>` error handling is powerful but requires explicit error types. The `thiserror` crate makes defining custom errors ergonomic, automatically generating boilerplate like `Display` and `Error` implementations. This results in precise, actionable error messages that clearly indicate the failure domain.
 
@@ -478,7 +478,7 @@ The repository exposes methods like `insert_complete_transaction()` that hide th
 
 The log format includes timestamps, levels, and key-value pairs, making logs machine-parsable for log aggregation systems like Elasticsearch or Loki.
 
-### Decision: Prometheus Metrics for Observability
+### Prometheus Metrics for Observability
 
 **Rationale**: Metrics complement logs by providing quantitative, real-time visibility into application health. Dashboards can display transaction processing rates, error rates, and latency percentiles, enabling proactive monitoring. Alerting rules can trigger notifications when error rates exceed thresholds or when the stream disconnects.
 
