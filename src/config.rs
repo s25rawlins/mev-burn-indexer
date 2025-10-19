@@ -14,6 +14,7 @@ pub struct AppConfig {
     pub database_url: String,
     pub log_level: String,
     pub metrics_port: u16,
+    pub include_failed_transactions: bool,
 }
 
 impl AppConfig {
@@ -29,6 +30,7 @@ impl AppConfig {
     /// - RPC_HTTP_URL: HTTP RPC endpoint (defaults to public Solana mainnet)
     /// - LOG_LEVEL: Logging level (default: "info")
     /// - METRICS_PORT: Port for Prometheus metrics server (default: 9090)
+    /// - INCLUDE_FAILED_TRANSACTIONS: Whether to include failed transactions (default: "true")
     pub fn from_env() -> Result<Self, AppError> {
         let grpc_endpoint = env::var("GRPC_ENDPOINT")
             .map_err(|_| AppError::Config("GRPC_ENDPOINT not set".to_string()))?;
@@ -54,6 +56,13 @@ impl AppConfig {
             .and_then(|port_str| port_str.parse::<u16>().ok())
             .unwrap_or(9090);
 
+        // Parse include_failed_transactions flag
+        // Default to true to capture comprehensive data about bot operations
+        let include_failed_transactions = env::var("INCLUDE_FAILED_TRANSACTIONS")
+            .ok()
+            .and_then(|val| val.parse::<bool>().ok())
+            .unwrap_or(true);
+
         // Validate target account is a valid base58 string
         Self::validate_base58_address(&target_account)?;
 
@@ -68,6 +77,7 @@ impl AppConfig {
             database_url,
             log_level,
             metrics_port,
+            include_failed_transactions,
         })
     }
 

@@ -14,6 +14,7 @@ pub struct RpcClient {
     grpc_endpoint: String,
     auth_token: String,
     account: Pubkey,
+    include_failed_transactions: bool,
 }
 
 impl RpcClient {
@@ -21,7 +22,16 @@ impl RpcClient {
     /// 
     /// The gRPC endpoint should be in the format: https://host:port
     /// Authentication is provided via the x-token header.
-    pub fn new(grpc_endpoint: String, auth_token: String, account: &str) -> Result<Self, AppError> {
+    /// 
+    /// The `include_failed_transactions` parameter controls whether failed transactions
+    /// are captured. Setting this to true provides more comprehensive data about the
+    /// bot's operations, including unsuccessful attempts that still incur fees.
+    pub fn new(
+        grpc_endpoint: String,
+        auth_token: String,
+        account: &str,
+        include_failed_transactions: bool,
+    ) -> Result<Self, AppError> {
         info!(
             grpc_endpoint = %grpc_endpoint,
             account = %account,
@@ -35,6 +45,7 @@ impl RpcClient {
             grpc_endpoint,
             auth_token,
             account,
+            include_failed_transactions,
         })
     }
 
@@ -62,15 +73,11 @@ impl RpcClient {
         Ok(client)
     }
 
-    /// Get the target account pubkey.
-    pub fn account(&self) -> &Pubkey {
-        &self.account
-    }
-
     /// Create a subscription request for monitoring the target account's transactions.
     /// 
     /// This builds a SubscribeRequest configured to receive updates for all transactions
-    /// that mention the target account, excluding vote transactions.
+    /// that mention the target account. Vote transactions are always excluded.
+    /// Failed transactions are included or excluded based on the configuration flag.
     pub fn create_subscription_request(&self) -> SubscribeRequest {
         use std::collections::HashMap;
         use yellowstone_grpc_proto::geyser::{
@@ -92,8 +99,14 @@ impl RpcClient {
         transactions.insert(
             "target_transactions".to_string(),
             SubscribeRequestFilterTransactions {
-                vote: Some(false), // Exclude vote transactions
-                failed: Some(false), // Exclude failed transactions
+                vote: Some(false), // Always exclude vote transactions
+                // Include or exclude failed transactions based on configuration
+                // When set to None, both successful and failed transactions are included
+                failed: if self.include_failed_transactions {
+                    None
+                } else {
+                    Some(false)
+                },
                 signature: None,
                 account_include: vec![self.account.to_string()],
                 account_exclude: vec![],

@@ -5,20 +5,55 @@ use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{error, info};
 
-/// Start the metrics HTTP server
+/// Start the metrics HTTP server with automatic port fallback.
+/// 
+/// Attempts to bind to the requested port first. If that port is already in use,
+/// automatically tries alternate ports (up to 10 attempts) to ensure the metrics
+/// server can start even if the default port is occupied by another process.
 pub async fn start_metrics_server(port: u16) -> Result<(), AppError> {
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    let listener = TcpListener::bind(addr).await
-        .map_err(|e| AppError::Config(format!(
-            "Failed to bind metrics server to port {}: {}. \
-             Port may already be in use. Try: \
-             1) Stop any process using port {} (find with: lsof -i :{} or ss -tulpn | grep {}), \
-             2) Set a different port using METRICS_PORT environment variable",
-            port, e, port, port, port
-        )))?;
+    const MAX_PORT_ATTEMPTS: u16 = 10;
     
-    info!("Metrics server listening on {}", addr);
+    let mut last_error = None;
+    
+    // Try the requested port and up to MAX_PORT_ATTEMPTS alternatives
+    for attempt in 0..MAX_PORT_ATTEMPTS {
+        let try_port = port + attempt;
+        let addr = SocketAddr::from(([0, 0, 0, 0], try_port));
+        
+        match TcpListener::bind(addr).await {
+            Ok(listener) => {
+                if attempt > 0 {
+                    info!(
+                        requested_port = port,
+                        actual_port = try_port,
+                        "Requested port was in use, bound to alternate port"
+                    );
+                } else {
+                    info!(port = try_port, "Metrics server listening");
+                }
+                
+                // Successfully bound, start serving
+                return serve_metrics(listener).await;
+            }
+            Err(e) => {
+                last_error = Some((try_port, e));
+            }
+        }
+    }
+    
+    // All port attempts failed
+    let (failed_port, error) = last_error.unwrap();
+    Err(AppError::Config(format!(
+        "Failed to bind metrics server after {} attempts (ports {}-{}): {}. \
+         All ports are in use. Try: \
+         1) Stop processes using these ports (find with: lsof -i :{}-{} or ss -tulpn | grep :{}), \
+         2) Set METRICS_PORT to a different range",
+        MAX_PORT_ATTEMPTS, port, failed_port, error, port, failed_port, port
+    )))
+}
 
+/// Serve metrics on the bound listener.
+async fn serve_metrics(listener: TcpListener) -> Result<(), AppError> {
     loop {
         match listener.accept().await {
             Ok((mut socket, _)) => {

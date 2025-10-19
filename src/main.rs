@@ -49,8 +49,15 @@ async fn main() -> Result<(), AppError> {
     let rpc_client = RpcClient::new(
         config.grpc_endpoint.clone(),
         config.grpc_token.clone(),
-        &config.target_account
+        &config.target_account,
+        config.include_failed_transactions,
     )?;
+
+    if config.include_failed_transactions {
+        info!("Configured to capture both successful and failed transactions for comprehensive analysis");
+    } else {
+        info!("Configured to capture only successful transactions");
+    }
 
     info!("All systems initialized, starting stream processing");
 
