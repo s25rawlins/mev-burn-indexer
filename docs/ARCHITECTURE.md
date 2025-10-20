@@ -54,6 +54,31 @@ The `tokio-postgres` crate is the canonical async PostgreSQL driver for Rust. It
 
 The `tokio-postgres-rustls` and `rustls` dependencies provide TLS encryption for database connections, required by cloud providers like NeonDB. The `webpki-roots` crate supplies trusted root certificates for validating server identities.
 
+### Database Migrations: refinery (v0.8)
+
+The application uses refinery for automated database schema management. Refinery is a migration runner that embeds SQL migration files into the compiled binary at build time, ensuring the database schema stays synchronized with the application code without external tooling.
+
+**Key advantages**:
+
+1. **Embedded migrations**: The `embed_migrations!()` macro reads all `.sql` files from the `migrations/` directory during compilation, bundling them into the binary. This eliminates runtime dependencies on external migration files.
+
+2. **Migration tracking**: Refinery creates a `refinery_schema_history` table that records which migrations have been applied, including timestamps and checksums. This prevents accidental re-application and enables rollback detection.
+
+3. **Idempotent execution**: Running migrations multiple times is safe. Already-applied migrations are skipped automatically based on the history table, making deployments repeatable.
+
+4. **Ordered execution**: Migration files use timestamp prefixes (e.g., `20240101000000_create_transactions_table.sql`) ensuring they execute in the correct chronological order.
+
+The migration system runs automatically on application startup via `run_migrations()` in `connection.rs`. This zero-configuration approach eliminates the need for separate migration commands or scripts, simplifying deployment workflows.
+
+**Migration file structure**:
+```
+migrations/
+├── 20240101000000_create_transactions_table.sql
+└── 20240101000001_create_balance_changes_table.sql
+```
+
+Each file contains pure SQL DDL statements (CREATE TABLE, CREATE INDEX) that define incremental schema changes. New migrations are added by creating new timestamped files, never by modifying existing ones, preserving the migration history.
+
 ### Error Handling: thiserror (v1.0) and anyhow (v1.0)
 
 The application uses a two-tier error strategy:
@@ -206,13 +231,13 @@ This design provides precise error context throughout the application. When a da
 
 This module encapsulates all PostgreSQL interaction behind a clean repository interface.
 
-**`connection.rs`**: Manages the connection lifecycle. The `establish_connection()` function creates a PostgreSQL client with the following configuration:
+**`connection.rs`**: Manages the connection lifecycle. The `create_client()` function creates a PostgreSQL client with the following configuration:
 
 - TLS encryption via `rustls` for cloud databases
 - Prepared statement caching for query performance
 - Connection pooling (future enhancement: use `deadpool-postgres` for connection pooling under high load)
 
-The connection also applies database migrations automatically on startup using embedded SQL files from the `migrations/` directory. This ensures the schema is always up to date without manual intervention.
+The module also includes a `run_migrations()` function that applies database migrations automatically on startup using refinery, an embedded migration runner. Refinery reads SQL migration files from the `migrations/` directory at compile time and tracks which migrations have been applied in a `refinery_schema_history` table. This ensures the schema is always up to date without manual intervention, and migrations are idempotent (safe to run multiple times).
 
 **`repository.rs`**: Implements the repository pattern, providing high-level methods for data persistence:
 

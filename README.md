@@ -85,10 +85,12 @@ cargo run --release
 
 The application will automatically:
 1. Connect to your PostgreSQL database
-2. Apply database migrations
+2. Apply database migrations using refinery (from the `migrations/` directory)
 3. Connect to the Yellowstone gRPC stream
 4. Start processing transactions
 5. Expose metrics on port 9090 (or next available port)
+
+The migration system uses refinery to track which schema changes have been applied. On first run, it creates the database schema. On subsequent runs, it applies only new migrations, making upgrades seamless.
 
 ### Start monitoring services
 
