@@ -37,10 +37,10 @@ async fn main() -> Result<(), AppError> {
     );
 
     // Establish database connection
-    let db_client = connection::create_client(&config.database_url).await?;
+    let mut db_client = connection::create_client(&config.database_url).await?;
 
-    // Run database migrations
-    connection::run_migrations(&db_client).await?;
+    // Run database migrations using refinery
+    connection::run_migrations(&mut db_client).await?;
 
     // Create repository for database operations
     let repository = Arc::new(TransactionRepository::new(db_client));

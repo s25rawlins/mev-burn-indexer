@@ -32,6 +32,9 @@ tokio-postgres-rustls = "0.10"
 rustls = "0.21"
 webpki-roots = "0.25"
 
+# Database migrations - automated schema versioning and tracking
+refinery = { version = "0.8", features = ["tokio-postgres"] }
+
 # Error handling - ergonomic custom error types
 thiserror = "1.0"
 anyhow = "1.0"  # Context-rich error propagation for application-level errors

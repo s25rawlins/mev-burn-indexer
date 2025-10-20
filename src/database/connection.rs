@@ -1,7 +1,11 @@
 use crate::error::AppError;
+use refinery::embed_migrations;
 use tokio_postgres::Client;
 use tokio_postgres_rustls::MakeRustlsConnect;
 use tracing::info;
+
+// Embed migration files at compile time from the migrations directory
+embed_migrations!("migrations");
 
 /// Create a PostgreSQL client connection.
 /// 
@@ -44,109 +48,19 @@ pub async fn create_client(database_url: &str) -> Result<Client, AppError> {
     Ok(client)
 }
 
-/// Run database migrations manually.
+/// Run database migrations using refinery.
 /// 
-/// Since we're not using sqlx anymore, we'll execute the migration SQL directly.
-pub async fn run_migrations(client: &Client) -> Result<(), AppError> {
+/// This automatically applies all migration files from the /migrations directory
+/// that haven't been applied yet. Refinery tracks which migrations have run
+/// in a special `refinery_schema_history` table, ensuring each migration is
+/// applied exactly once.
+pub async fn run_migrations(client: &mut Client) -> Result<(), AppError> {
     info!("Running database migrations");
 
-    // Create transactions table
-    client
-        .execute(
-            r#"
-            CREATE TABLE IF NOT EXISTS transactions (
-                id BIGSERIAL PRIMARY KEY,
-                signature VARCHAR(88) NOT NULL UNIQUE,
-                slot BIGINT NOT NULL,
-                block_time TIMESTAMP WITH TIME ZONE,
-                fee BIGINT NOT NULL,
-                fee_payer VARCHAR(44) NOT NULL,
-                success BOOLEAN NOT NULL,
-                compute_units_consumed BIGINT,
-                ingested_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
-            )
-            "#,
-            &[],
-        )
+    migrations::runner()
+        .run_async(client)
         .await
-        .map_err(|e| AppError::Database(format!("Failed to create transactions table: {}", e)))?;
-
-    // Create indexes for transactions
-    client
-        .execute(
-            "CREATE INDEX IF NOT EXISTS idx_transactions_block_time ON transactions(block_time)",
-            &[],
-        )
-        .await
-        .map_err(|e| AppError::Database(format!("Failed to create index: {}", e)))?;
-
-    client
-        .execute(
-            "CREATE INDEX IF NOT EXISTS idx_transactions_slot ON transactions(slot)",
-            &[],
-        )
-        .await
-        .map_err(|e| AppError::Database(format!("Failed to create index: {}", e)))?;
-
-    client
-        .execute(
-            "CREATE INDEX IF NOT EXISTS idx_transactions_ingested_at ON transactions(ingested_at)",
-            &[],
-        )
-        .await
-        .map_err(|e| AppError::Database(format!("Failed to create index: {}", e)))?;
-
-    client
-        .execute(
-            "CREATE INDEX IF NOT EXISTS idx_transactions_fee_payer ON transactions(fee_payer)",
-            &[],
-        )
-        .await
-        .map_err(|e| AppError::Database(format!("Failed to create index: {}", e)))?;
-
-    // Create balance_changes table
-    client
-        .execute(
-            r#"
-            CREATE TABLE IF NOT EXISTS account_balance_changes (
-                id BIGSERIAL PRIMARY KEY,
-                transaction_id BIGINT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
-                account_address VARCHAR(44) NOT NULL,
-                mint_address VARCHAR(44),
-                pre_balance BIGINT NOT NULL,
-                post_balance BIGINT NOT NULL,
-                balance_delta BIGINT NOT NULL
-            )
-            "#,
-            &[],
-        )
-        .await
-        .map_err(|e| AppError::Database(format!("Failed to create balance_changes table: {}", e)))?;
-
-    // Create indexes for balance_changes
-    client
-        .execute(
-            "CREATE INDEX IF NOT EXISTS idx_balance_changes_transaction_id ON account_balance_changes(transaction_id)",
-            &[],
-        )
-        .await
-        .map_err(|e| AppError::Database(format!("Failed to create index: {}", e)))?;
-
-    client
-        .execute(
-            "CREATE INDEX IF NOT EXISTS idx_balance_changes_account_address ON account_balance_changes(account_address)",
-            &[],
-        )
-        .await
-        .map_err(|e| AppError::Database(format!("Failed to create index: {}", e)))?;
-
-    client
-        .execute(
-            "CREATE INDEX IF NOT EXISTS idx_balance_changes_mint_address ON account_balance_changes(mint_address)",
-            &[],
-        )
-        .await
-        .map_err(|e| AppError::Database(format!("Failed to create index: {}", e)))?;
+        .map_err(|e| AppError::Database(format!("Migration failed: {}", e)))?;
 
     info!("Database migrations completed successfully");
 
