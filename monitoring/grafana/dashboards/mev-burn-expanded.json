@@ -1,0 +1,304 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1000000},
+              {"color": "red", "value": 10000000}
+            ]
+          },
+          "unit": "none",
+          "decimals": 0
+        }
+      },
+      "gridPos": {"h": 6, "w": 4, "x": 0, "y": 0},
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": {"values": false, "calcs": ["sum"]},
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "postgres"},
+          "format": "table",
+          "rawSql": "SELECT SUM(fee) as value FROM transactions WHERE success = true;",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Burn (Lamports)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 0},
+              {"color": "green", "value": 1000000}
+            ]
+          },
+          "unit": "none",
+          "decimals": 0
+        }
+      },
+      "gridPos": {"h": 6, "w": 4, "x": 4, "y": 0},
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": {"values": false, "calcs": ["sum"]},
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "postgres"},
+          "format": "table",
+          "rawSql": "SELECT SUM(bc.balance_delta) as value FROM account_balance_changes bc JOIN transactions t ON bc.transaction_id = t.id WHERE bc.mint_address IS NULL AND t.success = true;",
+          "refId": "A"
+        }
+      ],
+      "title": "Net SOL Change",
+      "type": "stat",
+      "description": "Total SOL balance change"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 0},
+              {"color": "green", "value": 1000000}
+            ]
+          },
+          "unit": "none",
+          "decimals": 0
+        }
+      },
+      "gridPos": {"h": 6, "w": 4, "x": 8, "y": 0},
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": {"values": false, "calcs": ["sum"]},
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "postgres"},
+          "format": "table",
+          "rawSql": "SELECT (SUM(bc.balance_delta) - SUM(t.fee)) as value FROM account_balance_changes bc JOIN transactions t ON bc.transaction_id = t.id WHERE bc.mint_address IS NULL AND t.success = true;",
+          "refId": "A"
+        }
+      ],
+      "title": "Estimated PnL",
+      "type": "stat",
+      "description": "SOL gained minus fees paid"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisCenteredZero": true,
+            "axisLabel": "Lamports",
+            "drawStyle": "line",
+            "fillOpacity": 30,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "SOL Gains"},
+            "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "SOL Losses"},
+            "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+          }
+        ]
+      },
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 6},
+      "id": 4,
+      "options": {
+        "legend": {"calcs": ["sum", "mean"], "displayMode": "table", "placement": "bottom"},
+        "tooltip": {"mode": "multi"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "postgres"},
+          "format": "time_series",
+          "rawSql": "SELECT DATE_TRUNC('hour', t.block_time) as time, SUM(CASE WHEN bc.balance_delta > 0 THEN bc.balance_delta ELSE 0 END) as \"SOL Gains\" FROM account_balance_changes bc JOIN transactions t ON bc.transaction_id = t.id WHERE bc.mint_address IS NULL AND t.success = true AND t.block_time >= NOW() - INTERVAL '7 days' GROUP BY time ORDER BY time;",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "postgres", "uid": "postgres"},
+          "format": "time_series",
+          "rawSql": "SELECT DATE_TRUNC('hour', t.block_time) as time, SUM(CASE WHEN bc.balance_delta < 0 THEN bc.balance_delta ELSE 0 END) as \"SOL Losses\" FROM account_balance_changes bc JOIN transactions t ON bc.transaction_id = t.id WHERE bc.mint_address IS NULL AND t.success = true AND t.block_time >= NOW() - INTERVAL '7 days' GROUP BY time ORDER BY time;",
+          "refId": "B"
+        }
+      ],
+      "title": "SOL Balance Changes Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisCenteredZero": true,
+            "axisLabel": "Lamports",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Cumulative PnL"},
+            "properties": [{"id": "color", "value": {"fixedColor": "blue", "mode": "fixed"}}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Cumulative Fees"},
+            "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]
+          }
+        ]
+      },
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 6},
+      "id": 5,
+      "options": {
+        "legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom"},
+        "tooltip": {"mode": "multi"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "postgres"},
+          "format": "time_series",
+          "rawSql": "SELECT DATE_TRUNC('hour', t.block_time) as time, SUM(SUM(bc.balance_delta - t.fee)) OVER (ORDER BY DATE_TRUNC('hour', t.block_time)) as \"Cumulative PnL\" FROM account_balance_changes bc JOIN transactions t ON bc.transaction_id = t.id WHERE bc.mint_address IS NULL AND t.success = true AND t.block_time >= NOW() - INTERVAL '7 days' GROUP BY time ORDER BY time;",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "postgres", "uid": "postgres"},
+          "format": "time_series",
+          "rawSql": "SELECT DATE_TRUNC('hour', block_time) as time, SUM(SUM(fee)) OVER (ORDER BY DATE_TRUNC('hour', block_time)) as \"Cumulative Fees\" FROM transactions WHERE success = true AND block_time >= NOW() - INTERVAL '7 days' GROUP BY time ORDER BY time;",
+          "refId": "B"
+        }
+      ],
+      "title": "Cumulative PnL vs Fees",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {"align": "left", "cellOptions": {"type": "auto"}},
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "balance_delta"},
+            "properties": [
+              {"id": "custom.cellOptions", "value": {"type": "color-background"}},
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {"color": "red", "value": null},
+                    {"color": "yellow", "value": -1000000},
+                    {"color": "green", "value": 0}
+                  ]
+                }
+              },
+              {"id": "displayName", "value": "Balance Change"}
+            ]
+          }
+        ]
+      },
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 16},
+      "id": 6,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "balance_delta"}]
+      },
+      "targets": [
+        {
+          "datasource": {"type": "postgres", "uid": "postgres"},
+          "format": "table",
+          "rawSql": "SELECT t.signature, t.block_time, bc.account_address, bc.balance_delta FROM account_balance_changes bc JOIN transactions t ON bc.transaction_id = t.id WHERE bc.mint_address IS NULL AND t.success = true ORDER BY ABS(bc.balance_delta) DESC LIMIT 50;",
+          "refId": "A"
+        }
+      ],
+      "title": "Largest SOL Balance Changes",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["solana", "mev", "burn", "pnl", "balance-changes"],
+  "templating": {"list": []},
+  "time": {"from": "now-24h", "to": "now"},
+  "timepicker": {},
+  "timezone": "",
+  "title": "MEV Burn Analysis - Expanded (Part 3)",
+  "uid": "mev-burn-expanded",
+  "version": 0
+}

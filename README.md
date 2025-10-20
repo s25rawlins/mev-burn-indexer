@@ -1,6 +1,6 @@
 # MEV Burn Indexer
 
-A production-grade data pipeline for monitoring and analyzing trading bot activity on the Solana blockchain. This application streams real-time transaction data from the `MEViEnscUm6tsQRoGd9h6nLQaQspKj7DB2M5FwM3Xvz` account, recording transaction fees (burn), balance changes, and operational metrics to provide competitive intelligence insights.
+A production grade data pipeline for monitoring and analyzing trading bot activity on the Solana blockchain. This application streams real time transaction data from the `MEViEnscUm6tsQRoGd9h6nLQaQspKj7DB2M5FwM3Xvz` account, recording transaction fees (burn), balance changes, and operational metrics to provide competitive intelligence insights.
 
 ## What this application does
 
@@ -11,8 +11,9 @@ The MEV Burn Indexer tracks every transaction initiated by a specific Solana tra
 - Success and failure status
 - Computational resources consumed
 - Account balance changes for both SOL and SPL tokens
+- Profit and loss (PnL) analysis with balance change tracking
 
-All data is stored in PostgreSQL with proper indexing for efficient analysis. The application includes a complete monitoring stack with Prometheus metrics and Grafana dashboards for real-time visibility into bot operations and system health.
+All data is stored in PostgreSQL with proper indexing for efficient analysis. The application includes a complete monitoring stack with Prometheus metrics and Grafana dashboards for real time visibility into bot operations, system health, and profitability metrics.
 
 ## Prerequisites
 
@@ -167,7 +168,7 @@ The application includes comprehensive monitoring capabilities:
 
 - `solana_tracker_transactions_processed_total`: Cumulative transactions processed
 - `solana_tracker_transactions_failed_total`: Cumulative processing failures
-- `solana_tracker_stream_connected`: Connection status (1=connected, 0=disconnected)
+- `solana_tracker_stream_connected`: Connection status (1 for connected, 0 for disconnected)
 - `solana_tracker_stream_reconnections_total`: Number of reconnection attempts
 - `solana_tracker_transaction_processing_seconds`: Processing time histogram
 - `solana_tracker_database_operation_seconds`: Database operation latency
@@ -175,13 +176,16 @@ The application includes comprehensive monitoring capabilities:
 
 ### Grafana dashboards
 
-Two pre-configured dashboards are included:
+You'll find three pre configured dashboards:
 
 **MEV Burn Indexer Dashboard**
 System metrics showing transaction processing rates, database performance, stream health, and application uptime.
 
 **MEV Burn Analysis Dashboard**
 Business metrics displaying total burn, transaction volumes, success rates, and recent transaction history.
+
+**MEV Burn Analysis, Expanded (Part 3)**
+Advanced profit and loss analysis with balance change visualizations, cumulative PnL tracking, and largest balance change identification. See [Part 3 documentation](docs/PART3_COMPLETION.md) for details.
 
 ## Usage examples
 
@@ -328,6 +332,7 @@ mev-burn-indexer/
 ## Additional resources
 
 - [Detailed architecture documentation](docs/ARCHITECTURE.md)
+- [Part 3 completion documentation](docs/PART3_COMPLETION.md)
 - [Deployment guide](docs/DEPLOYMENT.md)
 - [Monitoring setup guide](docs/MONITORING.md)
 - [Yellowstone gRPC documentation](https://docs.triton.one/project-yellowstone/dragons-mouth-grpc-subscriptions)

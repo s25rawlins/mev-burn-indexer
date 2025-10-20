@@ -56,8 +56,8 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 6,
+        "h": 6,
+        "w": 4,
         "x": 0,
         "y": 0
       },
@@ -76,8 +76,8 @@
         },
         "textMode": "auto",
         "text": {
-          "titleSize": 16,
-          "valueSize": 32
+          "titleSize": 14,
+          "valueSize": 24
         }
       },
       "pluginVersion": "10.0.0",
@@ -88,13 +88,13 @@
             "uid": "postgres"
           },
           "format": "table",
-          "rawSql": "SELECT SUM(fee) as \"Total Burn (Lamports)\" FROM transactions WHERE success = true;",
+          "rawSql": "SELECT SUM(fee) as \"Total Burn\" FROM transactions WHERE success = true;",
           "refId": "A"
         }
       ],
-      "title": "Total Burn (Lamports)",
+      "title": "Total Burn",
       "type": "stat",
-      "description": "Total SOL burned in transaction fees (in lamports, 1 SOL = 1,000,000,000 lamports)"
+      "description": "Total SOL burned in transaction fees (in lamports)"
     },
     {
       "datasource": {
@@ -130,9 +130,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 6,
+        "h": 6,
+        "w": 4,
+        "x": 4,
         "y": 0
       },
       "id": 11,
@@ -158,11 +158,11 @@
             "uid": "postgres"
           },
           "format": "table",
-          "rawSql": "SELECT AVG(fee)::bigint as \"Average Fee (Lamports)\" FROM transactions WHERE success = true;",
+          "rawSql": "SELECT AVG(fee)::bigint as \"Avg Fee\" FROM transactions WHERE success = true;",
           "refId": "A"
         }
       ],
-      "title": "Average Transaction Fee",
+      "title": "Avg Fee",
       "type": "stat",
       "description": "Average fee per successful transaction"
     },
@@ -191,9 +191,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 12,
+        "h": 6,
+        "w": 4,
+        "x": 8,
         "y": 0
       },
       "id": 12,
@@ -219,11 +219,11 @@
             "uid": "postgres"
           },
           "format": "table",
-          "rawSql": "SELECT COUNT(*) as \"Total Transactions\" FROM transactions;",
+          "rawSql": "SELECT COUNT(*) as \"Total Txs\" FROM transactions;",
           "refId": "A"
         }
       ],
-      "title": "Total Transactions Indexed",
+      "title": "Total Txs",
       "type": "stat"
     },
     {
@@ -235,13 +235,6 @@
         "defaults": {
           "color": {
             "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
           },
           "mappings": [],
           "thresholds": {
@@ -266,9 +259,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 18,
+        "h": 6,
+        "w": 4,
+        "x": 12,
         "y": 0
       },
       "id": 13,
@@ -294,12 +287,152 @@
             "uid": "postgres"
           },
           "format": "table",
-          "rawSql": "SELECT \n  CAST(SUM(CASE WHEN success THEN 1 ELSE 0 END) AS FLOAT) / NULLIF(COUNT(*), 0) as \"Success Rate\"\nFROM transactions;",
+          "rawSql": "SELECT CAST(SUM(CASE WHEN success THEN 1 ELSE 0 END) AS FLOAT) / NULLIF(COUNT(*), 0) as \"Success Rate\" FROM transactions;",
           "refId": "A"
         }
       ],
-      "title": "Transaction Success Rate",
+      "title": "Success Rate",
       "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0
+              },
+              {
+                "color": "green",
+                "value": 1000000
+              }
+            ]
+          },
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "id": 20,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "sum"
+          ],
+          "fields": ""
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT SUM(bc.balance_delta) as \"Net SOL\" FROM account_balance_changes bc JOIN transactions t ON bc.transaction_id = t.id WHERE bc.mint_address IS NULL AND t.success = true;",
+          "refId": "A"
+        }
+      ],
+      "title": "Net SOL Change",
+      "type": "stat",
+      "description": "Total SOL balance change across all successful transactions"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0
+              },
+              {
+                "color": "green",
+                "value": 1000000
+              }
+            ]
+          },
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "id": 21,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "sum"
+          ],
+          "fields": ""
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT (SUM(bc.balance_delta) - SUM(t.fee)) as \"Est PnL\" FROM account_balance_changes bc JOIN transactions t ON bc.transaction_id = t.id WHERE bc.mint_address IS NULL AND t.success = true;",
+          "refId": "A"
+        }
+      ],
+      "title": "Est. PnL",
+      "type": "stat",
+      "description": "Estimated profit/loss: SOL gained minus fees paid"
     },
     {
       "datasource": {
@@ -357,9 +490,9 @@
       },
       "gridPos": {
         "h": 10,
-        "w": 24,
+        "w": 12,
         "x": 0,
-        "y": 8
+        "y": 6
       },
       "id": 14,
       "options": {
@@ -386,13 +519,145 @@
             "uid": "postgres"
           },
           "format": "time_series",
-          "rawSql": "SELECT \n  DATE_TRUNC('hour', block_time) as time,\n  SUM(fee) as \"Cumulative Burn\"\nFROM transactions\nWHERE success = true\n  AND block_time >= NOW() - INTERVAL '7 days'\nGROUP BY time\nORDER BY time;",
+          "rawSql": "SELECT DATE_TRUNC('hour', block_time) as time, SUM(fee) as \"Hourly Burn\" FROM transactions WHERE success = true AND block_time >= NOW() - INTERVAL '7 days' GROUP BY time ORDER BY time;",
           "refId": "A"
         }
       ],
       "title": "Burn Over Time (Hourly)",
       "type": "timeseries",
-      "description": "Total SOL burned per hour over the last 7 days"
+      "description": "SOL burned per hour over the last 7 days"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": true,
+            "axisColorMode": "text",
+            "axisLabel": "Lamports",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 30,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SOL Gains"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SOL Losses"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "id": 22,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum",
+            "mean"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "format": "time_series",
+          "rawSql": "SELECT DATE_TRUNC('hour', t.block_time) as time, SUM(CASE WHEN bc.balance_delta > 0 THEN bc.balance_delta ELSE 0 END) as \"SOL Gains\" FROM account_balance_changes bc JOIN transactions t ON bc.transaction_id = t.id WHERE bc.mint_address IS NULL AND t.success = true AND t.block_time >= NOW() - INTERVAL '7 days' GROUP BY time ORDER BY time;",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "format": "time_series",
+          "rawSql": "SELECT DATE_TRUNC('hour', t.block_time) as time, SUM(CASE WHEN bc.balance_delta < 0 THEN bc.balance_delta ELSE 0 END) as \"SOL Losses\" FROM account_balance_changes bc JOIN transactions t ON bc.transaction_id = t.id WHERE bc.mint_address IS NULL AND t.success = true AND t.block_time >= NOW() - INTERVAL '7 days' GROUP BY time ORDER BY time;",
+          "refId": "B"
+        }
+      ],
+      "title": "SOL Balance Changes Over Time",
+      "type": "timeseries",
+      "description": "Hourly SOL gains and losses from all account balance changes"
     },
     {
       "datasource": {
@@ -481,9 +746,9 @@
       },
       "gridPos": {
         "h": 10,
-        "w": 24,
+        "w": 12,
         "x": 0,
-        "y": 18
+        "y": 16
       },
       "id": 15,
       "options": {
@@ -507,7 +772,7 @@
             "uid": "postgres"
           },
           "format": "time_series",
-          "rawSql": "SELECT \n  DATE_TRUNC('hour', block_time) as time,\n  COUNT(*) as \"Successful\"\nFROM transactions\nWHERE success = true\n  AND block_time >= NOW() - INTERVAL '24 hours'\nGROUP BY time\nORDER BY time;",
+          "rawSql": "SELECT DATE_TRUNC('hour', block_time) as time, COUNT(*) as \"Successful\" FROM transactions WHERE success = true AND block_time >= NOW() - INTERVAL '24 hours' GROUP BY time ORDER BY time;",
           "refId": "A"
         },
         {
@@ -516,12 +781,295 @@
             "uid": "postgres"
           },
           "format": "time_series",
-          "rawSql": "SELECT \n  DATE_TRUNC('hour', block_time) as time,\n  COUNT(*) as \"Failed\"\nFROM transactions\nWHERE success = false\n  AND block_time >= NOW() - INTERVAL '24 hours'\nGROUP BY time\nORDER BY time;",
+          "rawSql": "SELECT DATE_TRUNC('hour', block_time) as time, COUNT(*) as \"Failed\" FROM transactions WHERE success = false AND block_time >= NOW() - INTERVAL '24 hours' GROUP BY time ORDER BY time;",
           "refId": "B"
         }
       ],
       "title": "Transaction Volume (Last 24 Hours)",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": true,
+            "axisColorMode": "text",
+            "axisLabel": "Lamports",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cumulative PnL"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cumulative Fees"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 23,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "format": "time_series",
+          "rawSql": "SELECT DATE_TRUNC('hour', t.block_time) as time, SUM(SUM(bc.balance_delta - t.fee)) OVER (ORDER BY DATE_TRUNC('hour', t.block_time)) as \"Cumulative PnL\" FROM account_balance_changes bc JOIN transactions t ON bc.transaction_id = t.id WHERE bc.mint_address IS NULL AND t.success = true AND t.block_time >= NOW() - INTERVAL '7 days' GROUP BY time ORDER BY time;",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "format": "time_series",
+          "rawSql": "SELECT DATE_TRUNC('hour', block_time) as time, SUM(SUM(fee)) OVER (ORDER BY DATE_TRUNC('hour', block_time)) as \"Cumulative Fees\" FROM transactions WHERE success = true AND block_time >= NOW() - INTERVAL '7 days' GROUP BY time ORDER BY time;",
+          "refId": "B"
+        }
+      ],
+      "title": "Cumulative PnL and Fees",
+      "type": "timeseries",
+      "description": "Cumulative profit/loss compared to cumulative fees paid over time"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "balance_delta"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": -1000000
+                    },
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Balance Change"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "account_address"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 350
+              },
+              {
+                "id": "displayName",
+                "value": "Account"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "signature"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "View on Solscan",
+                    "url": "https://solscan.io/tx/${__value.raw}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 400
+              },
+              {
+                "id": "displayName",
+                "value": "Transaction"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 26
+      },
+      "id": 24,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Balance Change"
+          }
+        ]
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT t.signature, t.block_time, bc.account_address, bc.balance_delta FROM account_balance_changes bc JOIN transactions t ON bc.transaction_id = t.id WHERE bc.mint_address IS NULL AND t.success = true ORDER BY ABS(bc.balance_delta) DESC LIMIT 50;",
+          "refId": "A"
+        }
+      ],
+      "title": "Largest SOL Balance Changes",
+      "type": "table",
+      "description": "Top 50 largest SOL balance changes by absolute value"
     },
     {
       "datasource": {
@@ -561,116 +1109,4 @@
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-background"
-                }
-              },
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "options": {
-                      "false": {
-                        "color": "red",
-                        "index": 1,
-                        "text": "Failed"
-                      },
-                      "true": {
-                        "color": "green",
-                        "index": 0,
-                        "text": "Success"
-                      }
-                    },
-                    "type": "value"
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "signature"
-            },
-            "properties": [
-              {
-                "id": "links",
-                "value": [
-                  {
-                    "title": "View on Solscan",
-                    "url": "https://solscan.io/tx/${__value.raw}"
-                  }
-                ]
-              },
-              {
-                "id": "custom.width",
-                "value": 500
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 24,
-        "x": 0,
-        "y": 28
-      },
-      "id": 16,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "block_time"
-          }
-        ]
-      },
-      "pluginVersion": "10.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "postgres",
-            "uid": "postgres"
-          },
-          "format": "table",
-          "rawSql": "SELECT \n  signature,\n  block_time,\n  fee,\n  success,\n  slot\nFROM transactions\nORDER BY block_time DESC\nLIMIT 50;",
-          "refId": "A"
-        }
-      ],
-      "title": "Recent Transactions",
-      "type": "table",
-      "description": "Latest 50 transactions indexed"
-    }
-  ],
-  "refresh": "30s",
-  "schemaVersion": 38,
-  "style": "dark",
-  "tags": [
-    "solana",
-    "mev",
-    "burn",
-    "transactions"
-  ],
-  "templating": {
-    "list": []
-  },
-  "time": {
-    "from": "now-24h",
-    "to": "now"
-  },
-  "timepicker": {},
-  "timezone": "",
-  "title": "MEV Burn Analysis Dashboard",
-  "uid": "mev-burn-analysis",
-  "version": 0,
-  "weekStart": ""
-}
+                  "type": "color-backgroun
