@@ -22,3 +22,6 @@ Thumbs.db
 # Monitoring data
 monitoring/.prometheus/
 monitoring/.grafana/
+
+# docs
+IMPLEMENTATION_SUMMARY.md

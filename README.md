@@ -1,146 +1,130 @@
 # MEV Burn Indexer
 
-A production-grade Rust application that monitors and records transaction activity for a specific Solana trading bot account. The system streams real-time transaction data via gRPC, extracts key metrics including fees and balance changes, and persists this information to PostgreSQL for historical analysis.
+A production-grade data pipeline for monitoring and analyzing trading bot activity on the Solana blockchain. This application streams real-time transaction data from the `MEViEnscUm6tsQRoGd9h6nLQaQspKj7DB2M5FwM3Xvz` account, recording transaction fees (burn), balance changes, and operational metrics to provide competitive intelligence insights.
 
-## What This Does
+## What this application does
 
-This application tracks the `MEViEnscUm6tsQRoGd9h6nLQaQspKj7DB2M5FwM3Xvz` account on Solana, recording every transaction it makes. For each transaction, you'll get:
+The MEV Burn Indexer tracks every transaction initiated by a specific Solana trading bot, capturing:
 
-- Transaction signature and metadata
-- Fees paid (the "burn" cost)
-- Success/failure status
-- Compute units consumed
-- Account balance changes (both SOL and SPL tokens)
+- Transaction signatures and metadata
+- Transaction fees paid (the "burn" cost)
+- Success and failure status
+- Computational resources consumed
+- Account balance changes for both SOL and SPL tokens
 
-All data is stored in PostgreSQL with proper indexing for efficient querying and analysis.
+All data is stored in PostgreSQL with proper indexing for efficient analysis. The application includes a complete monitoring stack with Prometheus metrics and Grafana dashboards for real-time visibility into bot operations and system health.
 
 ## Prerequisites
 
-Before running this application, you'll need:
+You'll need the following before getting started:
 
-- **Rust** 1.70 or later ([installation guide](https://rustup.rs/))
-- **PostgreSQL** 13 or later (local instance or cloud provider like NeonDB)
-- **Database credentials** with permissions to create tables and indexes
-- **gRPC access** to temporal.rpcpool.com (credentials provided in requirements)
+- **Docker and Docker Compose** (version 3.8 or later) for containerized deployment
+- **Rust** 1.70 or later for local development ([install Rust](https://rustup.rs/))
+- **PostgreSQL database** with create table permissions (NeonDB or local instance)
+- **gRPC credentials** for temporal.rpcpool.com (provided in assignment)
 
-## Getting Started
+## Quick start with Docker
 
-### 1. Clone the Repository
+The fastest way to run the complete stack is using Docker Compose:
 
 ```bash
+# Clone the repository
 git clone <repository-url>
 cd mev-burn-indexer
+
+# Create environment configuration
+cp .env.example .env
+# Edit .env with your database credentials and RPC tokens
+
+# Start the complete stack (indexer, Prometheus, Grafana)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f indexer
 ```
 
-### 2. Set Up the Database
+Access the dashboards:
+- Grafana: http://localhost:3000 (admin/admin)
+- Prometheus: http://localhost:9091
+- Metrics endpoint: http://localhost:9090/metrics
 
-Create a PostgreSQL database for the application:
+## Local development setup
 
-```bash
-createdb mev_burn_indexer
-```
+For development or if you prefer running the application directly:
 
-Or use your cloud provider's interface to provision a new database.
+### Configure environment variables
 
-### 3. Configure Environment Variables
-
-Copy the example environment file and update it with your credentials:
+Create a `.env` file with your configuration:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` to match your setup:
+Edit the file to include your credentials:
 
 ```env
 GRPC_ENDPOINT=https://temporal.rpcpool.com
 GRPC_TOKEN=your-token-here
 TARGET_ACCOUNT=MEViEnscUm6tsQRoGd9h6nLQaQspKj7DB2M5FwM3Xvz
-DATABASE_URL=postgresql://username:password@host:port/mev_burn_indexer
+DATABASE_URL=postgresql://user:password@host:port/database?sslmode=require
 LOG_LEVEL=info
 ```
 
-**Database URL format:**
-- Local: `postgresql://username:password@localhost:5432/mev_burn_indexer`
-- NeonDB: `postgresql://username:password@ep-xyz.neon.tech/mev_burn_indexer?sslmode=require`
-
-### 4. Build the Application
+### Build and run
 
 ```bash
+# Build the application
 cargo build --release
-```
 
-The release build includes optimizations and will run faster than the debug build.
+# Run the application
+cargo run --release
 
-### 5. Run the Application
-
-**Option 1: Use the Startup Script (Recommended)**
-
-The included startup script handles all prerequisites, builds, and runs the application with detailed logging:
-
-```bash
+# Or use the startup script
 ./start.sh
 ```
 
-The script will:
-- Validate all prerequisites (Rust toolchain, .env file, required variables)
-- Build the application in release mode
-- Start the application with detailed console logging
-- Display configuration summary before startup
+The application will automatically:
+1. Connect to your PostgreSQL database
+2. Apply database migrations
+3. Connect to the Yellowstone gRPC stream
+4. Start processing transactions
+5. Expose metrics on port 9090 (or next available port)
 
-To adjust log level:
-```bash
-LOG_LEVEL=debug ./start.sh
-```
+### Start monitoring services
 
-**Option 2: Manual Start**
+If running locally, you can still use the monitoring stack:
 
 ```bash
-cargo run --release
+# Start Prometheus and Grafana
+docker-compose -f docker-compose.monitoring.yml up -d
 ```
 
-On first run, the application will automatically apply database migrations to create the required tables. You should see log output confirming:
+## Architecture overview
 
-1. Configuration loaded
-2. Database connection established
-3. Migrations completed
-4. gRPC connection successful
-5. Stream processing started
+The application follows a modular architecture with clear separation of concerns:
 
-The application will now continuously monitor the target account and save transactions to your database.
+**Configuration** (`src/config.rs`)
+Loads and validates environment variables, providing type-safe access to application settings.
 
-## Architecture Overview
+**Database layer** (`src/database/`)
+- `connection.rs`: Manages PostgreSQL connections with TLS encryption
+- `repository.rs`: Implements the repository pattern for all database operations
 
-### Components
+**gRPC client** (`src/grpc/`)
+- `client.rs`: Establishes and maintains Yellowstone gRPC connections
+- `stream_handler.rs`: Processes the account stream with automatic reconnection
 
-The application is organized into several modules, each with a specific responsibility:
-
-**Configuration (`src/config.rs`)**
-- Loads environment variables
-- Validates configuration values
-- Provides type-safe access to settings
-
-**Database Layer (`src/database/`)**
-- `connection.rs`: Manages the PostgreSQL connection pool
-- `repository.rs`: Handles all database operations using the repository pattern
-
-**gRPC Client (`src/grpc/`)**
-- `client.rs`: Establishes and maintains the connection to the gRPC endpoint
-- `stream_handler.rs`: Processes the account update stream with automatic reconnection
-
-**Solana Parser (`src/solana/`)**
+**Solana parser** (`src/solana/`)
 - `models.rs`: Domain models for transactions and balance changes
-- `parser.rs`: Converts raw transaction data into structured formats
+- `parser.rs`: Converts raw Solana transaction data into structured formats
 
-**Error Handling (`src/error.rs`)**
-- Custom error types for different failure modes
-- Integration with `thiserror` for ergonomic error handling
+**Error handling** (`src/error.rs`)
+Custom error types using `thiserror` for precise failure context.
 
-**Telemetry (`src/telemetry.rs`)**
-- Structured logging using the `tracing` framework
-- Configurable log levels for debugging and production
+**Observability** (`src/telemetry.rs`, `src/metrics.rs`)
+Structured logging and Prometheus metrics for monitoring system health.
 
-### Data Flow
+### Data flow
 
 ```
 gRPC Stream → Parse Transaction → Extract Metadata → Save to Database
@@ -149,171 +133,212 @@ gRPC Stream → Parse Transaction → Extract Metadata → Save to Database
   Updates      Slot, Time         Success Status      (Indexed)
 ```
 
-The application maintains a persistent connection to the gRPC stream. When a transaction involving the target account occurs, it's parsed and immediately saved to the database. If the connection drops, exponential backoff retry logic automatically reconnects.
+The application maintains a persistent connection to the gRPC stream. When a transaction occurs, it's parsed and immediately persisted. If the connection drops, exponential backoff retry logic automatically reconnects.
 
-### Database Schema
+## Database schema
 
-**transactions**
-- Stores core transaction metadata
-- Indexed on signature (unique), slot, block_time, and fee_payer
-- Tracks fees paid and compute units consumed
+**transactions table**
+Stores core transaction metadata with the following key columns:
+- `signature`: Unique transaction identifier (VARCHAR(88))
+- `slot`: Solana slot number for ordering (BIGINT)
+- `block_time`: Transaction timestamp (TIMESTAMPTZ)
+- `fee`: Transaction fee in lamports (BIGINT)
+- `fee_payer`: Account that paid the fee (VARCHAR(44))
+- `success`: Whether the transaction succeeded (BOOLEAN)
+- `compute_units_consumed`: Computational resources used (BIGINT)
 
-**account_balance_changes**
-- Records how account balances changed during each transaction
-- Links to transactions via foreign key
-- Supports both SOL and SPL token balance changes
-- Indexed for efficient account and mint lookups
+Indexes on signature (unique), slot, block_time, and fee_payer enable efficient queries.
 
-## Usage Examples
+**account_balance_changes table**
+Records balance modifications for each transaction:
+- `transaction_id`: Foreign key to transactions table
+- `account_address`: Public key of affected account
+- `mint_address`: SPL token mint (NULL for SOL)
+- `pre_balance`, `post_balance`: Balances before and after (BIGINT)
+- `balance_delta`: Precomputed change for aggregation queries
 
-### Querying Total Fees Paid
+## Monitoring and dashboards
+
+The application includes comprehensive monitoring capabilities:
+
+### Prometheus metrics
+
+- `solana_tracker_transactions_processed_total`: Cumulative transactions processed
+- `solana_tracker_transactions_failed_total`: Cumulative processing failures
+- `solana_tracker_stream_connected`: Connection status (1=connected, 0=disconnected)
+- `solana_tracker_stream_reconnections_total`: Number of reconnection attempts
+- `solana_tracker_transaction_processing_seconds`: Processing time histogram
+- `solana_tracker_database_operation_seconds`: Database operation latency
+- `solana_tracker_uptime_seconds`: Application uptime
+
+### Grafana dashboards
+
+Two pre-configured dashboards are included:
+
+**MEV Burn Indexer Dashboard**
+System metrics showing transaction processing rates, database performance, stream health, and application uptime.
+
+**MEV Burn Analysis Dashboard**
+Business metrics displaying total burn, transaction volumes, success rates, and recent transaction history.
+
+## Usage examples
+
+### Query total fees by day
 
 ```sql
-SELECT 
-    DATE_TRUNC('day', ingested_at) as date,
-    SUM(fee) / 1000000000.0 as total_sol_burned
+SELECT
+    DATE(block_time) as date,
+    COUNT(*) as tx_count,
+    SUM(fee) / 1e9 as sol_burned
 FROM transactions
-WHERE success = true
-GROUP BY DATE_TRUNC('day', ingested_at)
+GROUP BY DATE(block_time)
 ORDER BY date DESC;
 ```
 
-### Finding Largest Balance Changes
+### Find largest balance changes
 
 ```sql
-SELECT 
+SELECT
     t.signature,
     t.block_time,
     bc.account_address,
-    bc.balance_delta / 1000000000.0 as sol_change
+    bc.balance_delta / 1e9 as sol_change
 FROM account_balance_changes bc
 JOIN transactions t ON bc.transaction_id = t.id
-WHERE bc.mint_address IS NULL  -- SOL only
+WHERE bc.mint_address IS NULL
 ORDER BY ABS(bc.balance_delta) DESC
 LIMIT 10;
 ```
 
-### Transaction Success Rate
+### Calculate success rate
 
 ```sql
-SELECT 
+SELECT
     COUNT(*) FILTER (WHERE success = true) as successful,
     COUNT(*) FILTER (WHERE success = false) as failed,
     ROUND(100.0 * COUNT(*) FILTER (WHERE success = true) / COUNT(*), 2) as success_rate
 FROM transactions;
 ```
 
-## Monitoring and Observability
-
-### Grafana Dashboard
-
-The application includes a complete monitoring stack with Prometheus and Grafana. See [MONITORING.md](MONITORING.md) for the full setup guide.
-
-**Quick Start:**
-1. Start your application with `./start.sh`
-2. Start monitoring stack: `docker-compose -f docker-compose.monitoring.yml up -d`
-3. Open Grafana at http://localhost:3000 (admin/admin)
-4. View the pre-configured "MEV Burn Indexer Dashboard"
-
-**Available Metrics:**
-- Transaction processing rates (successful/failed)
-- Stream connection status and reconnections
-- Processing time percentiles (p50, p95, p99)
-- Database operation latencies
-- Application uptime and health
-- Balance changes recorded
-
-The metrics endpoint is available at http://localhost:9090/metrics in Prometheus format.
-
-### Structured Logging
-
-The application uses structured logging with the `tracing` framework. Log output includes:
-
-- Connection status and reconnection attempts
-- Transaction processing counts (every 10 transactions)
-- Parse errors (logged but don't stop the stream)
-- Database operation results
-
-Adjust the log level via the `LOG_LEVEL` environment variable:
-- `trace`: Maximum verbosity (includes all spans)
-- `debug`: Detailed debugging information
-- `info`: General operational messages (recommended)
-- `warn`: Only warnings and errors
-- `error`: Only error messages
-
 ## Troubleshooting
 
-**Metrics Server Port Already in Use**
+### Application won't start
 
-If you see the error `Failed to bind metrics server: Address already in use (os error 98)`:
+**Check environment configuration**
+Verify your `.env` file contains all required variables with valid credentials.
 
-1. **Find the conflicting process**:
-   ```bash
-   # On Linux
-   lsof -i :9090
-   # Or
-   ss -tulpn | grep 9090
-   
-   # On macOS
-   lsof -i :9090
-   ```
+**Test database connectivity**
+```bash
+psql "your-database-url-here" -c "SELECT 1;"
+```
 
-2. **Option A: Stop the conflicting process** (if it's safe to do so)
+### Metrics server port conflicts
 
-3. **Option B: Use a different port** by adding to your `.env` file:
-   ```env
-   METRICS_PORT=9091
-   ```
+If port 9090 is in use, the application automatically binds to the next available port (9091, 9092, etc.). Check the startup logs to see which port was selected:
 
-4. If using Docker monitoring stack, update `docker-compose.monitoring.yml` to match your custom port
+```
+INFO mev_burn_indexer::metrics_server: Requested port was in use, bound to alternate port
+```
 
-**Connection Issues**
+Update your Prometheus configuration to match the actual port.
 
-If you see repeated gRPC connection errors:
-1. Verify your `GRPC_TOKEN` is correct
-2. Check that `GRPC_ENDPOINT` is accessible from your network
-3. Ensure your firewall allows outbound HTTPS connections
+### Grafana shows no data
 
-**Database Errors**
+Wait 1 to 2 minutes for initial data collection, then verify:
 
-If migrations fail or database operations error:
-1. Confirm your `DATABASE_URL` is correctly formatted
-2. Verify the database user has CREATE and INSERT permissions
-3. Check that the database exists and is accessible
+1. Application is running: `docker-compose ps` or check process list
+2. Prometheus is scraping: http://localhost:9091/targets
+3. Metrics endpoint is accessible: `curl http://localhost:9090/metrics`
 
-**No Transactions Appearing**
+### Stream connection failures
 
-If the stream connects but no transactions are saved:
-1. Verify `TARGET_ACCOUNT` is correctly formatted (base58 address)
-2. Check that the account is actually making transactions
-3. Review logs for parse errors that might indicate a data format issue
+The application includes automatic reconnection with exponential backoff. If you see repeated connection errors:
 
-## Development
+1. Verify `GRPC_ENDPOINT` and `GRPC_TOKEN` in `.env`
+2. Check internet connectivity
+3. Confirm RPC service is operational
+4. Review logs for specific error messages
 
-### Running Tests
+## Development commands
 
+### Run tests
 ```bash
 cargo test
 ```
 
-### Code Formatting
-
+### Format code
 ```bash
 cargo fmt
 ```
 
-### Linting
-
+### Run linter
 ```bash
 cargo clippy
 ```
 
-## Future Enhancements
+### View application logs
+```bash
+# Docker deployment
+docker-compose logs -f indexer
 
-The architecture supports several planned extensions:
+# Local deployment
+tail -f indexer.log
+```
 
-1. **Instruction-Level Analysis**: Add a table to store program invocations and log messages for deeper transaction analysis
-2. **PnL Calculation**: Aggregate balance changes over time to estimate profit and loss
-3. **Metrics Export**: Expose Prometheus metrics for monitoring dashboards
-4. **REST API**: Provide HTTP endpoints for querying historical data
-5. **Multi-Account Tracking**: Extend to monitor multiple accounts simultaneously
+## Production deployment
+
+For production environments, consider these enhancements:
+
+1. **Change default passwords**: Update Grafana credentials in `docker-compose.yml`
+2. **Enable HTTPS**: Configure a reverse proxy (nginx, Caddy) with SSL certificates
+3. **Set up backups**: Automate PostgreSQL backups and Grafana dashboard exports
+4. **Configure alerting**: Set up Prometheus alert rules for critical conditions
+5. **Monitor disk usage**: Prometheus data grows over time, ensure adequate storage
+6. **Restrict network access**: Limit metrics endpoint access to monitoring systems only
+
+## Project structure
+
+```
+mev-burn-indexer/
+├── src/
+│   ├── main.rs              # Application entry point
+│   ├── config.rs            # Configuration management
+│   ├── error.rs             # Error types
+│   ├── telemetry.rs         # Logging setup
+│   ├── metrics.rs           # Prometheus metrics
+│   ├── metrics_server.rs    # HTTP metrics endpoint
+│   ├── database/            # Database layer
+│   ├── grpc/                # gRPC client and stream handling
+│   └── solana/              # Solana-specific models and parsers
+├── monitoring/
+│   ├── prometheus.yml       # Prometheus configuration (local)
+│   ├── prometheus-docker.yml # Prometheus configuration (Docker)
+│   └── grafana/             # Grafana dashboards and provisioning
+├── docs/
+│   ├── ARCHITECTURE.md      # Detailed architecture documentation
+│   ├── DEPLOYMENT.md        # Deployment guide
+│   └── MONITORING.md        # Monitoring setup guide
+├── Dockerfile               # Container image definition
+├── docker-compose.yml       # Full stack orchestration
+└── .env.example             # Environment template
+```
+
+## Additional resources
+
+- [Detailed architecture documentation](docs/ARCHITECTURE.md)
+- [Deployment guide](docs/DEPLOYMENT.md)
+- [Monitoring setup guide](docs/MONITORING.md)
+- [Yellowstone gRPC documentation](https://docs.triton.one/project-yellowstone/dragons-mouth-grpc-subscriptions)
+- [Solana JSON-RPC documentation](https://solana.com/docs/rpc)
+
+## License
+
+MIT License
+
+Copyright (c) 2025
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-#
-# MEV Burn Indexer - Application Startup Script
-#
-# This script performs a complete startup sequence:
+
+# Performs a complete startup sequence:
 # 1. Validates prerequisites (Rust toolchain, environment configuration)
 # 2. Builds the application in release mode
 # 3. Runs the application with structured logging to console
@@ -51,12 +49,10 @@ log_header() {
     echo
 }
 
-# Check if a command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Validate prerequisites
 validate_prerequisites() {
     log_header "Validating Prerequisites"
     
@@ -71,8 +67,7 @@ validate_prerequisites() {
         rust_version=$(rustc --version | cut -d' ' -f2)
         log_success "Rust toolchain found (version $rust_version)"
     fi
-    
-    # Check for .env file
+
     if [[ ! -f .env ]]; then
         log_error ".env file not found. Please create one with required configuration."
         log_info "Required variables: GRPC_ENDPOINT, GRPC_TOKEN, TARGET_ACCOUNT, DATABASE_URL"
@@ -89,7 +84,6 @@ validate_prerequisites() {
             log_error ".env file contains syntax errors. Please fix and try again."
             has_errors=1
         else
-            # Validate required environment variables exist and have non-empty values
             # We load the .env temporarily to check values without polluting current environment
             local required_vars=("GRPC_ENDPOINT" "TARGET_ACCOUNT" "DATABASE_URL")
             for var in "${required_vars[@]}"; do
@@ -107,8 +101,7 @@ validate_prerequisites() {
             done
         fi
     fi
-    
-    # Check for src directory
+
     if [[ ! -d src ]]; then
         log_error "src directory not found. Are you in the project root?"
         has_errors=1
@@ -116,7 +109,6 @@ validate_prerequisites() {
         log_success "Source directory found"
     fi
     
-    # Check for Cargo.toml
     if [[ ! -f Cargo.toml ]]; then
         log_error "Cargo.toml not found. Are you in the project root?"
         has_errors=1
@@ -133,7 +125,6 @@ validate_prerequisites() {
     return 0
 }
 
-# Build the application
 build_application() {
     log_header "Building Application"
     
@@ -159,8 +150,7 @@ build_application() {
         log_error "Build failed with exit code $build_status"
         return 1
     fi
-    
-    # Verify the binary was actually created
+
     # This catches edge cases where cargo succeeds but doesn't produce the expected artifact
     if [[ ! -f target/release/mev-burn-indexer ]]; then
         log_error "Build reported success but binary not found at target/release/mev-burn-indexer"
@@ -168,7 +158,6 @@ build_application() {
         return 1
     fi
     
-    # Verify the binary is executable
     if [[ ! -x target/release/mev-burn-indexer ]]; then
         log_error "Binary exists but is not executable. Check file permissions."
         return 1
@@ -178,11 +167,9 @@ build_application() {
     return 0
 }
 
-# Run the application
 run_application() {
     log_header "Starting Application"
     
-    # Final verification that binary exists before attempting to run
     # This guards against scenarios where build artifacts were cleaned between build and run
     if [[ ! -f target/release/mev-burn-indexer ]]; then
         log_error "Application binary not found at target/release/mev-burn-indexer"
@@ -212,7 +199,6 @@ run_application() {
         log_warning ".env file not found at runtime. Using environment defaults."
     fi
     
-    # Set default log level if not specified
     export LOG_LEVEL="${LOG_LEVEL:-info}"
     
     # Validate critical environment variables are now set after sourcing
@@ -249,12 +235,10 @@ run_application() {
     echo -e "${BLUE}========================================${NC}"
     echo
     
-    # Run the application
     # The application's tracing will handle all logging to console
     ./target/release/mev-burn-indexer
 }
 
-# Cleanup on exit
 cleanup() {
     local exit_code=$?
     echo
@@ -267,25 +251,20 @@ cleanup() {
 
 trap cleanup EXIT
 
-# Main execution
 main() {
     log_header "MEV Burn Indexer"
     
-    # Validate prerequisites
     if ! validate_prerequisites; then
         exit 1
     fi
     
-    # Build application
     if ! build_application; then
         exit 2
     fi
     
-    # Run application
     if ! run_application; then
         exit 3
     fi
 }
 
-# Execute main function
 main "$@"

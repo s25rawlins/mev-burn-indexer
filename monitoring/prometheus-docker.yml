@@ -5,13 +5,15 @@ global:
     monitor: 'mev-burn-indexer'
 
 scrape_configs:
+  # MEV Burn Indexer application metrics
   - job_name: 'mev-burn-indexer'
     static_configs:
-      - targets: ['172.17.0.1:9092']
+      - targets: ['indexer:9090']
         labels:
           service: 'mev-burn-indexer'
           environment: 'production'
 
+  # Prometheus self-monitoring
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
