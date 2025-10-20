@@ -48,7 +48,20 @@ DATABASE_URL=your-neondb-connection-string
 LOG_LEVEL=info
 METRICS_PORT=9090
 INCLUDE_FAILED_TRANSACTIONS=true
+
+# PostgreSQL connection details for Grafana (extracted from DATABASE_URL)
+POSTGRES_HOST=your-host.neon.tech
+POSTGRES_PORT=5432
+POSTGRES_DB=mev-burn-indexer
+POSTGRES_USER=your-username
+POSTGRES_PASSWORD=your-password
 ```
+
+**Note:** The PostgreSQL variables should match the connection details in your `DATABASE_URL`. For example, if your `DATABASE_URL` is `postgresql://user:pass@host.neon.tech:5432/dbname?sslmode=require`, then:
+- `POSTGRES_HOST=host.neon.tech`
+- `POSTGRES_USER=user`
+- `POSTGRES_PASSWORD=pass`
+- `POSTGRES_DB=dbname`
 
 ### Step 2: Start the monitoring stack
 
@@ -82,15 +95,26 @@ You'll be prompted to change the password on first login. You can skip this if y
 
 ### Step 3.1: Create additional user (optional)
 
-If you need to create an additional user with specific credentials, run the provisioning script:
+If you need to create an additional user with specific credentials, configure the user details in your `.env` file:
+
+```env
+GRAFANA_USER_EMAIL=your-email@example.com
+GRAFANA_USER_PASSWORD=your-secure-password
+GRAFANA_USER_NAME=Your Full Name
+GRAFANA_USER_LOGIN=your-email@example.com
+```
+
+Then run the provisioning script:
 
 ```bash
 ./monitoring/scripts/create_grafana_user.sh
 ```
 
-This script creates a user with the following credentials:
-- Email: `srawlins@gmail.com`
-- Password: `2501`
+Alternatively, you can provide the credentials directly as command line arguments:
+
+```bash
+./monitoring/scripts/create_grafana_user.sh "user@example.com" "password" "Full Name" "login"
+```
 
 The script automatically:
 - Waits for Grafana to be fully ready

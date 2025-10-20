@@ -60,7 +60,7 @@ Edit `.env` with your credentials:
 ```env
 # gRPC streaming endpoint
 GRPC_ENDPOINT=https://temporal.rpcpool.com
-GRPC_TOKEN=4586b536-c930-43f1-91c1-bee31ab3a0a2
+GRPC_TOKEN=your-grpc-token-here
 
 # Target Solana account to monitor
 TARGET_ACCOUNT=MEViEnscUm6tsQRoGd9h6nLQaQspKj7DB2M5FwM3Xvz
@@ -72,6 +72,19 @@ DATABASE_URL=postgresql://user:password@host:port/database?sslmode=require
 LOG_LEVEL=info
 METRICS_PORT=9090
 INCLUDE_FAILED_TRANSACTIONS=true
+
+# PostgreSQL connection details for Grafana (extracted from DATABASE_URL)
+POSTGRES_HOST=your-host.neon.tech
+POSTGRES_PORT=5432
+POSTGRES_DB=mev-burn-indexer
+POSTGRES_USER=your-username
+POSTGRES_PASSWORD=your-password
+
+# Grafana user provisioning (optional)
+GRAFANA_USER_EMAIL=your-email@example.com
+GRAFANA_USER_PASSWORD=your-secure-password
+GRAFANA_USER_NAME=Your Full Name
+GRAFANA_USER_LOGIN=your-email@example.com
 ```
 
 **Database URL format:**

@@ -1,6 +1,8 @@
-# Multi-stage build for optimized container size and security
-# Stage 1: Build the application
-FROM rust:1.75-slim AS builder
+FROM rust:1.82-slim AS builder
+
+LABEL maintainer="sean@mev-burn-indexer.io" \
+      version="1.0" \
+      description="MEV Burn Indexer - Solana blockchain transaction indexer"
 
 WORKDIR /app
 
@@ -10,12 +12,8 @@ RUN apt-get update && \
     apt-get install -y pkg-config libssl-dev ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy dependency manifests first for better layer caching
-# This allows Docker to cache dependencies when source code changes
 COPY Cargo.toml Cargo.lock ./
 
-# Create a dummy main.rs to build dependencies
-# This optimizes build caching by separating dependency compilation
 RUN mkdir src && \
     echo "fn main() {}" > src/main.rs && \
     cargo build --release && \
@@ -23,7 +21,6 @@ RUN mkdir src && \
 
 COPY src ./src
 
-# Touch main.rs to ensure rebuild after dummy file removal
 RUN touch src/main.rs && cargo build --release
 
 # Stage 2: Create minimal runtime image
@@ -31,11 +28,12 @@ FROM debian:bookworm-slim
 
 # libssl3: Required for TLS connections to database and gRPC
 # ca-certificates: Required for certificate verification
+# curl: Required for healthcheck functionality
 RUN apt-get update && \
-    apt-get install -y libssl3 ca-certificates && \
+    apt-get install -y libssl3 ca-certificates curl && \
     rm -rf /var/lib/apt/lists/*
 
-RUN useradd -m -u 1000 indexer
+RUN useradd -m -u 10001 indexer
 
 WORKDIR /app
 
@@ -45,10 +43,8 @@ RUN chown -R indexer:indexer /app
 
 USER indexer
 
-# Port 9090 is the default metrics endpoint port
 EXPOSE 9090
 
-# Checks the metrics endpoint which includes a health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:9090/health || exit 1
 

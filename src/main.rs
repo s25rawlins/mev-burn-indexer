@@ -26,8 +26,8 @@ async fn main() -> Result<(), AppError> {
     // Initialize telemetry (structured logging)
     telemetry::init_telemetry(&config.log_level);
 
-    // Initialize metrics
-    metrics::init_metrics();
+    // Initialize metrics with proper error handling
+    metrics::init_metrics()?;
 
     info!("Starting Solana Bot Transaction Tracker");
     info!(

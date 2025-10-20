@@ -42,7 +42,9 @@ pub async fn start_metrics_server(port: u16) -> Result<(), AppError> {
     }
     
     // All port attempts failed
-    let (failed_port, error) = last_error.unwrap();
+    let (failed_port, error) = last_error.ok_or_else(|| {
+        AppError::Config("No port binding attempts were made".to_string())
+    })?;
     Err(AppError::Config(format!(
         "Failed to bind metrics server after {} attempts (ports {}-{}): {}. \
          All ports are in use. Try: \
@@ -71,18 +73,27 @@ async fn serve_metrics(listener: TcpListener) -> Result<(), AppError> {
                     
                     if request.starts_with("GET /metrics") {
                         // Gather metrics
-                        let metrics_output = metrics::gather_metrics();
-                        
-                        // Build HTTP response
-                        let response = format!(
-                            "HTTP/1.1 200 OK\r\nContent-Type: text/plain; version=0.0.4\r\nContent-Length: {}\r\n\r\n{}",
-                            metrics_output.len(),
-                            metrics_output
-                        );
+                        match metrics::gather_metrics() {
+                            Ok(metrics_output) => {
+                                // Build HTTP response
+                                let response = format!(
+                                    "HTTP/1.1 200 OK\r\nContent-Type: text/plain; version=0.0.4\r\nContent-Length: {}\r\n\r\n{}",
+                                    metrics_output.len(),
+                                    metrics_output
+                                );
 
-                        // Send response
-                        if let Err(e) = socket.write_all(response.as_bytes()).await {
-                            error!("Failed to write to socket: {}", e);
+                                // Send response
+                                if let Err(e) = socket.write_all(response.as_bytes()).await {
+                                    error!("Failed to write to socket: {}", e);
+                                }
+                            }
+                            Err(e) => {
+                                error!("Failed to gather metrics: {}", e);
+                                let error_response = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 21\r\n\r\nMetrics unavailable\n";
+                                if let Err(e) = socket.write_all(error_response.as_bytes()).await {
+                                    error!("Failed to write error response: {}", e);
+                                }
+                            }
                         }
                     } else if request.starts_with("GET /health") {
                         // Health check endpoint

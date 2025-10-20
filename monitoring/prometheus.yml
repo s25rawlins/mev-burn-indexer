@@ -7,7 +7,7 @@ global:
 scrape_configs:
   - job_name: 'mev-burn-indexer'
     static_configs:
-      - targets: ['172.17.0.1:9092']
+      - targets: ['172.17.0.1:9091']
         labels:
           service: 'mev-burn-indexer'
           environment: 'production'
