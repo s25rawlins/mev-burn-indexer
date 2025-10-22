@@ -1,4 +1,4 @@
-FROM rust:1.82-slim AS builder
+FROM rustlang/rust:nightly-slim AS builder
 
 LABEL maintainer="sean@mev-burn-indexer.io" \
       version="1.0" \
@@ -8,11 +8,13 @@ WORKDIR /app
 
 # ca-certificates: Required for HTTPS connections to gRPC endpoints
 # pkg-config, libssl-dev: Required for rustls and tokio-postgres TLS support
+# g++, make, automake, autoconf, libtool: Required for protobuf-src compilation
 RUN apt-get update && \
-    apt-get install -y pkg-config libssl-dev ca-certificates && \
+    apt-get install -y pkg-config libssl-dev ca-certificates g++ make automake autoconf libtool && \
     rm -rf /var/lib/apt/lists/*
 
 COPY Cargo.toml Cargo.lock ./
+COPY migrations ./migrations
 
 RUN mkdir src && \
     echo "fn main() {}" > src/main.rs && \
